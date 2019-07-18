@@ -1,7 +1,21 @@
 #!/bin/bash
-set -e 
 
-source utils/setup_cvmfs_sft.sh
+
+LCG_RELEASE=95
+if uname -a | grep ekpdeepthought
+then
+    #source /cvmfs/sft.cern.ch/lcg/views/LCG_94/x86_64-ubuntu1604-gcc54-opt/setup.sh
+    #source /cvmfs/sft.cern.ch/lcg/views/LCG_95/x86_64-ubuntu1804-gcc8-opt/setup.sh
+    echo "Not possible here"
+    exit 1
+elif uname -a | grep bms1
+then
+    source /cvmfs/sft.cern.ch/lcg/views/LCG_${LCG_RELEASE}/x86_64-centos7-gcc8-opt/setup.sh
+else
+    source /cvmfs/sft.cern.ch/lcg/views/LCG_${LCG_RELEASE}/x86_64-slc6-gcc8-opt/setup.sh
+fi
+
+
 source utils/setup_python.sh
 
 function run_procedure() {
@@ -13,20 +27,21 @@ function run_procedure() {
     ARTUS_FRIENDS=""
     if [ ${SELCHANNEL} == 'mt' ]
     then
-        ARTUS_FRIENDS=${ARTUS_FRIENDS_MT}
+        ARTUS_FRIENDS="${ARTUS_FRIENDS_MT} $FF_Friends_2017"
     fi
     if [ ${SELCHANNEL} == 'et' ]
     then
-        ARTUS_FRIENDS=${ARTUS_FRIENDS_ET}
+        ARTUS_FRIENDS="${ARTUS_FRIENDS_ET} $FF_Friends_2017"
     fi
     if [ ${SELCHANNEL} == 'tt' ]
     then
-        ARTUS_FRIENDS=${ARTUS_FRIENDS_TT}
+        ARTUS_FRIENDS="${ARTUS_FRIENDS_TT} $FF_Friends_2017"
     fi
     if [ ${SELCHANNEL} == 'em' ]
     then
         ARTUS_FRIENDS=${ARTUS_FRIENDS_EM}
     fi
+    #set -x
     # Write dataset config
     python ml/write_dataset_config.py \
         --era ${SELERA} \
@@ -39,7 +54,8 @@ function run_procedure() {
         --tree-path ${SELCHANNEL}_nominal/ntuple \
         --event-branch event \
         --training-weight-branch training_weight \
-        --training-z-estimation-method emb \
+        --training-z-estimation-method mc \
+	--training-jetfakes-estimation-method ff \
         --output-config ml/${SELERA}_${SELCHANNEL}/dataset_config.yaml
 
     # Create dataset files from config
@@ -53,5 +69,6 @@ function run_procedure() {
     #    ml/${SELERA}_${SELCHANNEL}/fold1_training_dataset.root
 }
 
+set -e
 source utils/multirun.sh
 genArgsAndRun run_procedure $@
