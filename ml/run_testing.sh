@@ -3,6 +3,10 @@ set -e
 
 ERA=$1
 CHANNEL=$2
+method=$3
+[[ $method == "" ]] && outdir=$PWD/ml/out/${ERA}_${SELCHANNEL} ||  outdir=$PWD/ml/out/${ERA}_${CHANNEL}_${method}
+dsconffile=$outdir/dataset_config.yaml
+
 
 source utils/setup_cvmfs_sft.sh
 source utils/setup_python.sh
@@ -15,8 +19,6 @@ if uname -a | grep ekpdeepthought
 then
     source utils/setup_cuda.sh
 fi
-
-mkdir -p ml/${ERA}_${CHANNEL}
 
 # Confusion matrices
 TEST_CONFUSION_MATRIX=1
@@ -41,7 +43,7 @@ fi
 
 # Taylor analysis (ranking)
 export KERAS_BACKEND=tensorflow
-TEST_TAYLOR_RANKING=1
+#TEST_TAYLOR_RANKING=1
 if [ -n "$TEST_TAYLOR_RANKING" ]; then
 python htt-ml/testing/keras_taylor_ranking.py \
     ml/${ERA}_${CHANNEL}_training.yaml ml/${ERA}_${CHANNEL}_testing.yaml 0

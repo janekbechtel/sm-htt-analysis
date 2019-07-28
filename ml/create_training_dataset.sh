@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 
 LCG_RELEASE=95
 if uname -a | grep ekpdeepthought
@@ -14,15 +14,27 @@ then
 else
     source /cvmfs/sft.cern.ch/lcg/views/LCG_${LCG_RELEASE}/x86_64-slc6-gcc8-opt/setup.sh
 fi
-
-
 source utils/setup_python.sh
+
+
+method=$3 ##Dont set this var if not needed
+if [[ $method == *"emb"* ]]; then
+    tauEstimation=emb
+else
+    tauEstimation=mc
+fi
+if [[ $method == *"ff"* ]]; then
+    jetEstimation=ff
+else
+    jetEstimation=mc
+fi
 
 function run_procedure() {
     SELERA=$1
     SELCHANNEL=$2
     source utils/setup_samples.sh $SELERA
-    mkdir -p ml/${SELERA}_${SELCHANNEL}
+    [[ $method == "" ]] && outdir=$PWD/ml/out/${SELERA}_${SELCHANNEL} ||  outdir=$PWD/ml/out/${SELERA}_${SELCHANNEL}_${method}
+    mkdir -p $outdir
 
     ARTUS_FRIENDS=""
     if [ ${SELCHANNEL} == 'mt' ]
@@ -41,26 +53,27 @@ function run_procedure() {
     then
         ARTUS_FRIENDS=${ARTUS_FRIENDS_EM}
     fi
-    #set -x
     # Write dataset config
+    (
+    set -x
     python ml/write_dataset_config.py \
         --era ${SELERA} \
         --channel ${SELCHANNEL} \
         --base-path $ARTUS_OUTPUTS \
         --friend-paths $ARTUS_FRIENDS \
         --database $KAPPA_DATABASE \
-        --output-path $PWD/ml/${SELERA}_${SELCHANNEL} \
+        --output-path $outdir \
         --output-filename training_dataset.root \
         --tree-path ${SELCHANNEL}_nominal/ntuple \
         --event-branch event \
         --training-weight-branch training_weight \
-        --training-z-estimation-method mc \
-        --training-jetfakes-estimation-method ff \
-        --output-config ml/${SELERA}_${SELCHANNEL}/dataset_config.yaml
+        --training-z-estimation-method $tauEstimation \
+        --training-jetfakes-estimation-method $jetEstimation \
+        --output-config $outdir/dataset_config.yaml
 
     # Create dataset files from config
-    ./htt-ml/dataset/create_training_dataset.py ml/${SELERA}_${SELCHANNEL}/dataset_config.yaml
-
+    ./htt-ml/dataset/create_training_dataset.py $outdir/dataset_config.yaml
+    )
     # Reweight STXS stage 1 signals so that each stage 1 signal is weighted equally but
     # conserve the overall weight of the stage 0 signal
     #python ml/reweight_stxs_stage1.py \
@@ -69,6 +82,5 @@ function run_procedure() {
     #    ml/${SELERA}_${SELCHANNEL}/fold1_training_dataset.root
 }
 
-set -e
 source utils/multirun.sh
 genArgsAndRun run_procedure $@
