@@ -1,5 +1,5 @@
 #!/bin/bash
-LCG_RELEASE=94
+[[ -z $LCG_RELEASE ]] && LCG_RELEASE=94
 if uname -a | grep ekpdeepthought
 then
     #source /cvmfs/sft.cern.ch/lcg/views/LCG_95/x86_64-ubuntu1804-gcc8-opt/setup.sh
